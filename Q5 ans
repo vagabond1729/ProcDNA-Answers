@@ -1,0 +1,49 @@
+# Filter the deliveries that fall within the 3rd powerplay (overs 41-50)
+powerplay_deliveries = deliveries_df[(deliveries_df['ball'] >= 41.1) & (deliveries_df['ball'] <= 50)]
+
+# Group by batting team to calculate aggregate run-rate during the 3rd powerplay
+powerplay_stats = powerplay_deliveries.groupby('batting_team').agg({
+    'total_runs': 'sum',
+    'ball': 'count'
+}).reset_index()
+
+# Calculate the aggregate run-rate
+powerplay_stats['run_rate'] = (powerplay_stats['total_runs'] / powerplay_stats['ball']) * 6
+
+# Determine run-rate when batting first vs. batting second
+# We'll assume innings 1 is batting first, and innings 2 is batting second
+first_innings_powerplay = powerplay_deliveries[powerplay_deliveries['innings'] == 1]
+second_innings_powerplay = powerplay_deliveries[powerplay_deliveries['innings'] == 2]
+
+# Calculate run-rate for first innings
+first_innings_stats = first_innings_powerplay.groupby('batting_team').agg({
+    'total_runs': 'sum',
+    'ball': 'count'
+}).reset_index()
+
+first_innings_stats['run_rate_first'] = (first_innings_stats['total_runs'] / first_innings_stats['ball']) * 6
+
+# Calculate run-rate for second innings
+second_innings_stats = second_innings_powerplay.groupby('batting_team').agg({
+    'total_runs': 'sum',
+    'ball': 'count'
+}).reset_index()
+
+second_innings_stats['run_rate_second'] = (second_innings_stats['total_runs'] / second_innings_stats['ball']) * 6
+
+# Calculate the number of wickets taken by teams in the 3rd powerplay
+wickets_in_powerplay = powerplay_deliveries[powerplay_deliveries['wicket_type'] != 0]
+wickets_taken = wickets_in_powerplay.groupby('bowling_team').size().reset_index(name='wickets_taken')
+
+# Calculate average number of deliveries per wicket
+wickets_taken['avg_deliveries_per_wicket'] = powerplay_stats['ball'] / wickets_taken['wickets_taken']
+
+# Merging the run rate data with wickets data
+final_powerplay_stats = pd.merge(powerplay_stats, first_innings_stats[['batting_team', 'run_rate_first']], on='batting_team', how='left')
+final_powerplay_stats = pd.merge(final_powerplay_stats, second_innings_stats[['batting_team', 'run_rate_second']], on='batting_team', how='left')
+final_powerplay_stats = pd.merge(final_powerplay_stats, wickets_taken, left_on='batting_team', right_on='bowling_team', how='left')
+
+# Selecting the relevant columns for display
+final_powerplay_stats = final_powerplay_stats[['batting_team', 'run_rate', 'run_rate_first', 'run_rate_second', 'wickets_taken', 'avg_deliveries_per_wicket']]
+
+import ace_tools as tools; tools.display_dataframe_to_user(name="Powerplay 3 Summary", dataframe=final_powerplay_stats)
