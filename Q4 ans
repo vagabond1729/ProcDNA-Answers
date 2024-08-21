@@ -1,0 +1,50 @@
+# Filter the deliveries that fall within the 1st powerplay (overs 1-10)
+powerplay1_deliveries = deliveries_df[(deliveries_df['ball'] >= 0.1) & (deliveries_df['ball'] <= 10)]
+
+# a) Top 5 batsmen who scored the maximum number of runs during the first powerplay
+top_batsmen = powerplay1_deliveries.groupby(['striker', 'batting_team']).agg({
+    'total_runs': 'sum',
+    'match_id': 'nunique'
+}).reset_index()
+
+# Sorting to get top 5 batsmen
+top_batsmen = top_batsmen.sort_values(by='total_runs', ascending=False).head(5)
+
+# b) Top 5 bowlers who took the maximum wickets during the first powerplay
+top_bowlers = powerplay1_deliveries[powerplay1_deliveries['wicket_type'] != 0].groupby(['bowler', 'bowling_team']).agg({
+    'wicket_type': 'count',
+    'match_id': 'nunique'
+}).reset_index()
+
+# Sorting to get top 5 bowlers
+top_bowlers = top_bowlers.sort_values(by='wicket_type', ascending=False).head(5)
+
+# c) For teams that reached the knockout phase, create a line chart with match number on the X-axis and their powerplay score on the Y-axis
+# Assuming 'knockout_teams' are teams that reached knockout phase (this needs to be provided or assumed based on additional data)
+# For now, assuming we are analyzing all teams.
+
+knockout_teams = powerplay1_deliveries['batting_team'].unique()  # replace with actual knockout teams list if available
+
+knockout_scores = powerplay1_deliveries[powerplay1_deliveries['batting_team'].isin(knockout_teams)].groupby(['match_id', 'batting_team']).agg({
+    'total_runs': 'sum'
+}).reset_index()
+
+import matplotlib.pyplot as plt
+
+# Plotting line chart for each team
+plt.figure(figsize=(10, 6))
+
+for team in knockout_teams:
+    team_scores = knockout_scores[knockout_scores['batting_team'] == team]
+    plt.plot(team_scores['match_id'], team_scores['total_runs'], marker='o', label=team)
+
+plt.title('Powerplay 1 Scores of Knockout Teams')
+plt.xlabel('Match Number')
+plt.ylabel('Powerplay 1 Score')
+plt.legend(title='Teams')
+plt.grid(True)
+plt.show()
+
+# Display the top 5 batsmen and bowlers
+import ace_tools as tools; tools.display_dataframe_to_user(name="Top 5 Batsmen in Powerplay 1", dataframe=top_batsmen)
+import ace_tools as tools; tools.display_dataframe_to_user(name="Top 5 Bowlers in Powerplay 1", dataframe=top_bowlers)
