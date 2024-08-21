@@ -1,0 +1,27 @@
+# Creating a new column that identifies partnerships as a tuple of the two batsmen
+deliveries_df['partnership'] = deliveries_df.apply(lambda row: tuple(sorted([row['striker'], row['non_striker']])), axis=1)
+
+# Grouping the data by partnership to calculate the required metrics
+partnership_stats = deliveries_df.groupby('partnership').agg({
+    'match_id': 'nunique',
+    'striker': 'count',  # Counting the number of balls faced by the partnership
+    'total_runs': 'sum',
+    'wicket_type': lambda x: x.isna().sum(),  # Counting not outs as the number of times partnership wasn't broken
+    'ball': 'count',
+    'runs_off_bat': 'sum'
+}).reset_index()
+
+# Calculating the additional required metrics
+partnership_stats['strike_rate'] = (partnership_stats['total_runs'] / partnership_stats['ball']) * 100
+partnership_stats['average_partnership'] = partnership_stats['total_runs'] / (partnership_stats['striker'] - partnership_stats['wicket_type'])
+partnership_stats['balls_per_boundary'] = partnership_stats['ball'] / partnership_stats['runs_off_bat']
+partnership_stats['percent_runs_in_boundary'] = (partnership_stats['runs_off_bat'] / partnership_stats['total_runs']) * 100
+
+# Sorting to get the top 7 partnerships by total runs scored
+top_partnerships = partnership_stats.sort_values(by='total_runs', ascending=False).head(7)
+
+# Selecting relevant columns for display
+top_partnerships_display = top_partnerships[['partnership', 'match_id', 'wicket_type', 'total_runs', 'ball', 'strike_rate', 'average_partnership', 'balls_per_boundary', 'percent_runs_in_boundary']]
+top_partnerships_display.columns = ['Batters', 'Innings', 'Not-Outs', 'Runs', 'Balls', 'Strike Rate', 'Average Partnership', 'Number of Balls/Boundary', '% Runs in Boundary']
+
+import ace_tools as tools; tools.display_dataframe_to_user(name="Top 7 Batting Partnerships", dataframe=top_partnerships_display)
